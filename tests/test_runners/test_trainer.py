@@ -1,7 +1,7 @@
 from genesis_envs.envs import GraspEnv
 from genesis_envs.agents import PPOAgent
 from genesis_envs.models import MLP
-from genesis_envs.tools.trainer import GenesisEnvTrainer
+from genesis_envs.runners.trainer import GenesisEnvTrainer
 
 
 def test_trainer():
@@ -14,5 +14,7 @@ def test_trainer():
     trainer = GenesisEnvTrainer(
         env=env,
         agent=agent,
+        exp_name="pytest_exp",
     )
-    states, actions, rewards, dones = trainer.rollout(max_step=3)
+    states, actions, rewards, dones = trainer.rollout(horizon=3)
+    trainer.train_loop(num_epochs=3, max_rollout_step=5)
