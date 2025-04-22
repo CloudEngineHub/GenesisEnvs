@@ -46,8 +46,15 @@ class PPOAgent(AgentInterface):
         rewards: Rewards,
         dones: Dones,
     ) -> torch.Tensor:
+        logs = {
+            "policy_loss": [],
+            "value_loss": [],
+            "entropy": [],
+            "total_loss": [],
+        }
+
         discounted_rewards = compute_discounted_rewards(
-            rewards, dones, self.discount_factor, device=self.device
+            rewards, dones, self.discount_factor, normalized=True, device=self.device
         )
 
         with torch.no_grad():
@@ -57,16 +64,9 @@ class PPOAgent(AgentInterface):
             log_probs_old = dist_old.log_prob(actions)
 
         advantages = discounted_rewards - value_old
-        normalized_advantages = (advantages - advantages.mean()) / (
-            advantages.std() + 1e-8
+        normalized_advantages = (advantages - advantages.mean(dim=0, keepdim=True)) / (
+            advantages.std(dim=0, keepdim=True) + 1e-8
         )
-
-        logs = {
-            "policy_loss": [],
-            "value_loss": [],
-            "entropy": [],
-            "total_loss": [],
-        }
 
         # TODO: support minibatch update
         # TODO: support gradient clipping
@@ -99,8 +99,10 @@ class PPOAgent(AgentInterface):
 
         logs["policy_loss"] = torch.tensor(logs["policy_loss"]).mean().item()
         logs["value_loss"] = torch.tensor(logs["value_loss"]).mean().item()
-        logs["entropy"] = torch.tensor(logs["entropy"]).mean().item()
         logs["total_loss"] = torch.tensor(logs["total_loss"]).mean().item()
+
+        logs["entropy"] = torch.tensor(logs["entropy"]).mean().item()
+        logs["discounted_rewards"] = discounted_rewards.detach().mean().item()
         logs["adv_mean"] = advantages.mean().item()
         logs["adv_std"] = advantages.std().item()
 
