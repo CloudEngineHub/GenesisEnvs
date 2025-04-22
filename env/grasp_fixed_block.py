@@ -67,6 +67,7 @@ class GraspFixedBlockEnv:
         # fixed cube position
         cube_pos = np.array([0.65, 0.0, 0.02])
         cube_pos = np.repeat(cube_pos[np.newaxis], self.num_envs, axis=0)
+        cube_pos = torch.tensor(cube_pos).to(self.device)
         self.cube.set_pos(cube_pos, envs_idx=self.envs_idx)
 
         obs1 = self.cube.get_pos()
