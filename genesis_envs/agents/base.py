@@ -4,6 +4,9 @@ from ..utils.typing_utils import States, Actions, Rewards, Dones
 
 
 class AgentInterface(ABC):
+    network: torch.nn.modules
+    device: torch.device
+
     @abstractmethod
     def select_action(self, state: States, deterministic: bool = False) -> Actions:
         pass

@@ -12,7 +12,7 @@ class GraspEnv(EnvInterface):
         self,
         vis: bool = False,
         num_envs: int = 1,
-        device: torch.device = torch.device("cpu"),
+        device: torch.device | str = torch.device("cpu"),
     ):
         self.vis = vis
         self.device = device
