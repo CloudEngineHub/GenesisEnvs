@@ -4,7 +4,7 @@ from ..utils.typing_utils import States, Actions, Rewards, Dones
 
 
 class AgentInterface(ABC):
-    network: torch.nn.modules
+    networks: dict[str, torch.nn.Module]
     device: torch.device
 
     @abstractmethod

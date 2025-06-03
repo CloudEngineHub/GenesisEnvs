@@ -64,12 +64,16 @@ def launch(
     gs.init(**genesis_init_params)
 
     # build agent params
-    network = build_module(conf["network"])
+    networks = {}
+    for network_name, network_conf in conf["network"].items():
+        networks[network_name] = build_module(network_conf)
     if resume_from is not None:
-        network.load_state_dict(torch.load(resume_from))
-    optimizer = build_optimizer(conf["optimizer"], network)
+        checkpoint = torch.load(resume_from, map_location=torch.device("cpu"))
+        for network_name, network_weights in checkpoint.items():
+            networks[network_name].load_state_dict(network_weights)
+    optimizer = build_optimizer(conf["optimizer"], networks)
 
-    agent = build_agent(network=network, optimizer=optimizer, conf=conf["agent"])
+    agent = build_agent(networks=networks, optimizer=optimizer, conf=conf["agent"])
     env = build_module(conf["environment"])
 
     trainer = build_trainer(env, agent, conf)

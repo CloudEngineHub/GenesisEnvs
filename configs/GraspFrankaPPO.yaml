@@ -4,11 +4,12 @@ environment:
     num_envs: 50
 
 network:
-    type: genesis_envs.models.MLP
-    input_dim: 6
-    hidden_dim: 64
-    output_dim: 9
-    num_layers: 3
+    actor_critic_model:
+        type: genesis_envs.models.MLP
+        input_dim: 6
+        hidden_dim: 64
+        output_dim: 9
+        num_layers: 3
 
 optimizer:
     type: torch.optim.Adam

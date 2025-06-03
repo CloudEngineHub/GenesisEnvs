@@ -7,10 +7,12 @@ from genesis_envs.runners.trainer import GenesisEnvTrainer
 
 def test_trainer():
     env = GraspEnv(vis=False)
-    network = MLP(6, 16, 8, 3)
-    optimizer = torch.optim.Adam(network.parameters(), lr=1e-3)
+    networks = {
+        "actor_critic_model": MLP(6, 16, 8, 3),
+    }
+    optimizer = torch.optim.Adam(networks["actor_critic_model"].parameters(), lr=1e-3)
     agent = PPOAgent(
-        network=network,
+        networks=networks,
         optimizer=optimizer,
         discount_factor=0.99,
         clip_epsilon=0.2,

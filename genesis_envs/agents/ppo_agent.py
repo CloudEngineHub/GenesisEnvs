@@ -10,7 +10,7 @@ from ..utils.typing_utils import States, Actions, Rewards, Dones
 class PPOAgent(AgentInterface):
     def __init__(
         self,
-        network: torch.nn.Module,
+        networks: dict[str, torch.nn.Module],
         optimizer: torch.optim.Optimizer,
         discount_factor: float,
         clip_epsilon: float,
@@ -20,7 +20,8 @@ class PPOAgent(AgentInterface):
         normalize_discounted_reward: bool = True,
         device: torch.device = torch.device("cpu"),
     ):
-        self.network = network
+        self.networks = networks
+        self.actor_critic_model = networks["actor_critic_model"]
         self.discount_factor = discount_factor
         self.value_coef = value_coef
         self.clip_epsilon = clip_epsilon
@@ -33,7 +34,7 @@ class PPOAgent(AgentInterface):
 
     def select_action(self, state: States, deterministic: bool = False) -> Actions:
         with torch.no_grad():
-            output = self.network(state)
+            output = self.actor_critic_model(state)
             logits = output[..., :-1]
         if deterministic:
             action = torch.argmax(logits, dim=-1)
@@ -64,7 +65,7 @@ class PPOAgent(AgentInterface):
         )
 
         with torch.no_grad():
-            output = self.network(states)
+            output = self.actor_critic_model(states)
             logits_old, value_old = output[..., :-1].detach(), output[..., -1].detach()
             dist_old = Categorical(logits=logits_old)
             log_probs_old = dist_old.log_prob(actions)
@@ -77,7 +78,7 @@ class PPOAgent(AgentInterface):
         # TODO: support minibatch update
         # TODO: support gradient clipping
         for t in range(self.num_update_steps):
-            output = self.network(states)
+            output = self.actor_critic_model(states)
             logits_new, values = output[..., :-1], output[..., -1]
             dist_new = Categorical(logits=logits_new)
 
