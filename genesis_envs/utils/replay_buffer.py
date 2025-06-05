@@ -12,28 +12,31 @@ class ReplayBuffer:
     def add(
         self,
         state: torch.Tensor,
+        next_state: torch.Tensor,
         action: torch.Tensor,
         reward: torch.Tensor,
         done: torch.Tensor,
     ):
-        self.buffer.append((state, action, reward, done))
+        self.buffer.append((state, next_state, action, reward, done))
 
     def sample(
         self, batch_size: int
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         indices = torch.randint(0, len(self.buffer), (batch_size,))
-        states, actions, rewards, dones = zip(*[self.buffer[i] for i in indices])
+        states, next_states, actions, rewards, dones = zip(*[self.buffer[i] for i in indices])
         return (
             torch.stack(states),
+            torch.stack(next_states),
             torch.stack(actions),
             torch.stack(rewards),
             torch.stack(dones),
         )
 
     def get_all(self):
-        states, actions, rewards, dones = zip(*self.buffer)
+        states, next_states, actions, rewards, dones = zip(*self.buffer)
         return {
             "states": torch.stack(states),
+            "next_states": torch.stack(next_states),
             "actions": torch.stack(actions),
             "rewards": torch.stack(rewards),
             "dones": torch.stack(dones),
