@@ -1,7 +1,8 @@
 # replay_buffer.py
-import torch
 from collections import deque
 from typing import Tuple
+
+import torch
 
 
 class ReplayBuffer:

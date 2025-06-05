@@ -1,5 +1,6 @@
-import torch
 from typing import List, Union
+
+import torch
 
 
 def compute_discounted_rewards(

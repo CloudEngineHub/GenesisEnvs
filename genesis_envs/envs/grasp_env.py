@@ -1,10 +1,11 @@
-import torch
-import genesis as gs
-import numpy as np
 from typing import Tuple
 
+import genesis as gs
+import numpy as np
+import torch
+
+from ..utils.typing_utils import Actions, Dones, Rewards, States
 from .base import EnvInterface
-from ..utils.typing_utils import States, Rewards, Dones, Actions
 
 
 class GraspEnv(EnvInterface):
@@ -94,7 +95,7 @@ class GraspEnv(EnvInterface):
         return state
 
     def step(self, actions: Actions) -> Tuple[States, Rewards, Dones]:
-        action_mask_0 = actions == 0  # Open gripper
+        # action_mask_0 = actions == 0  # Open gripper
         action_mask_1 = actions == 1  # Close gripper
         action_mask_2 = actions == 2  # Lift gripper
         action_mask_3 = actions == 3  # Lower gripper

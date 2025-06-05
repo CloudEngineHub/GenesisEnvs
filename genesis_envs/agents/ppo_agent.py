@@ -4,7 +4,7 @@ from torch.nn import functional as F
 
 from ..agents.base import AgentInterface
 from ..utils.reward_utils import compute_discounted_rewards
-from ..utils.typing_utils import States, Actions, Rewards, Dones
+from ..utils.typing_utils import Actions, Dones, Rewards, States
 
 
 class PPOAgent(AgentInterface):

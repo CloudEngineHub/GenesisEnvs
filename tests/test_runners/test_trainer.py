@@ -1,6 +1,7 @@
 import torch
-from genesis_envs.envs import GraspEnv
+
 from genesis_envs.agents import PPOAgent
+from genesis_envs.envs import GraspEnv
 from genesis_envs.models import MLP
 from genesis_envs.runners.trainer import GenesisEnvTrainer
 

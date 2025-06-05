@@ -1,14 +1,16 @@
 import os
-import torch
-import loguru
-import tyro
 from datetime import datetime
-from omegaconf import OmegaConf
+
 import genesis as gs
+import loguru
+import torch
+import tyro
+from omegaconf import OmegaConf
+
 from genesis_envs.utils.build_modules import (
+    build_agent,
     build_module,
     build_optimizer,
-    build_agent,
     build_trainer,
 )
 
@@ -49,7 +51,7 @@ def launch(
             level="INFO",
             format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}",
         )
-    
+
     loguru.logger.info("Starting training...")
     loguru.logger.info(f"Config: \n{OmegaConf.to_yaml(conf)}")
 

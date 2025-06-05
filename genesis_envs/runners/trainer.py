@@ -1,12 +1,13 @@
 import os
 import time
+from typing import Dict, List, Optional, Tuple
+
 import torch
-from typing import Tuple, Dict, List, Optional
 from loguru import logger
 
-from genesis_envs.envs.base import EnvInterface
 from genesis_envs.agents.base import AgentInterface
-from genesis_envs.utils.typing_utils import States, Actions, Rewards, Dones
+from genesis_envs.envs.base import EnvInterface
+from genesis_envs.utils.typing_utils import Actions, Dones, Rewards, States
 
 
 def format_log_string(logs: Dict, selected_keys: Optional[List[str]] = None) -> str:

@@ -1,8 +1,9 @@
-import genesis as gs
 from abc import ABC, abstractmethod
 from typing import Tuple
 
-from ..utils.typing_utils import States, Rewards, Dones, Actions
+import genesis as gs
+
+from ..utils.typing_utils import Actions, Dones, Rewards, States
 
 
 class EnvInterface(ABC):

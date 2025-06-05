@@ -1,6 +1,8 @@
-import torch
 from abc import ABC, abstractmethod
-from ..utils.typing_utils import States, Actions, Rewards, Dones
+
+import torch
+
+from ..utils.typing_utils import Actions, Dones, Rewards, States
 
 
 class AgentInterface(ABC):
