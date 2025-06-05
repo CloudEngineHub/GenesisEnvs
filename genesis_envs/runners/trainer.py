@@ -80,18 +80,17 @@ class GenesisEnvTrainer:
         dones = torch.stack(dones)
 
         return states, actions, rewards, dones
-    
+
     def save_checkpoint(self, checkpoint_name: str):
-        check_point_save_path = os.path.join(
-            self.checkpoint_save_path, checkpoint_name
-        )
+        check_point_save_path = os.path.join(self.checkpoint_save_path, checkpoint_name)
         logger.info(f"save checkpoint: {check_point_save_path}")
 
         networks_checkpoint = {}
         for network_name in self.agent.networks:
-            networks_checkpoint[network_name] = self.agent.networks[network_name].state_dict()
+            networks_checkpoint[network_name] = self.agent.networks[
+                network_name
+            ].state_dict()
         torch.save(networks_checkpoint, check_point_save_path)
-
 
     def train_loop(self):
         start_time = time.time()

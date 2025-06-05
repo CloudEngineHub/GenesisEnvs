@@ -23,7 +23,9 @@ class ReplayBuffer:
         self, batch_size: int
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         indices = torch.randint(0, len(self.buffer), (batch_size,))
-        states, next_states, actions, rewards, dones = zip(*[self.buffer[i] for i in indices])
+        states, next_states, actions, rewards, dones = zip(
+            *[self.buffer[i] for i in indices]
+        )
         return (
             torch.stack(states),
             torch.stack(next_states),
