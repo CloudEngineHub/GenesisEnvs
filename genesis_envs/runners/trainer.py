@@ -8,6 +8,7 @@ from loguru import logger
 from genesis_envs.agents.base import AgentInterface
 from genesis_envs.envs.base import EnvInterface
 from genesis_envs.utils.typing_utils import Actions, Dones, Rewards, States
+from genesis_envs.utils.replay_buffer import ReplayBuffer
 
 
 def format_log_string(logs: Dict, selected_keys: Optional[List[str]] = None) -> str:
@@ -25,6 +26,8 @@ class GenesisEnvTrainer:
         exp_name: str | os.PathLike,
         horizon: int = 50,
         num_epochs: int = 500,
+        replay_buffer_size: int = 1,
+        replay_buffer_sample_batch_size: int = 1,
         deterministic_action: bool = False,
         output_dir: str | os.PathLike = "outputs",
         log_every_epochs: int = 1,
@@ -43,6 +46,9 @@ class GenesisEnvTrainer:
         self.save_checkpoint_every_epochs = save_checkpoint_every_epochs
         self.device = device
 
+        self.replay_buffer = ReplayBuffer(buffer_size=replay_buffer_size)
+        self.replay_buffer_sample_batch_size = replay_buffer_sample_batch_size
+
         if isinstance(self.device, str):
             self.device = torch.device(self.device)
 
@@ -55,7 +61,7 @@ class GenesisEnvTrainer:
         state = self.env.reset()
         total_reward = torch.zeros(self.env.num_envs, device=self.device)
         done_array = torch.tensor([False] * self.env.num_envs, device=self.device)
-        states, actions, rewards, dones = [], [], [], []
+        states, next_states, actions, rewards, dones = [], [], [], [], []
 
         for step in range(self.horizon):
             action = self.agent.select_action(
@@ -64,6 +70,7 @@ class GenesisEnvTrainer:
             next_state, reward, done = self.env.step(action)
 
             states.append(state)
+            next_states.append(next_state)
             actions.append(action)
             rewards.append(reward)
             dones.append(done)
@@ -76,11 +83,12 @@ class GenesisEnvTrainer:
                 break
 
         states = torch.stack(states)
+        next_states = torch.stack(next_states)
         actions = torch.stack(actions)
         rewards = torch.stack(rewards)
         dones = torch.stack(dones)
 
-        return states, actions, rewards, dones
+        return states, next_states, actions, rewards, dones
 
     def save_checkpoint(self, checkpoint_name: str):
         check_point_save_path = os.path.join(self.checkpoint_save_path, checkpoint_name)
@@ -96,8 +104,21 @@ class GenesisEnvTrainer:
     def train_loop(self):
         start_time = time.time()
         for epoch in range(self.num_epochs):
-            states, actions, rewards, dones = self.rollout()
-            logs = self.agent.update_policy(states, actions, rewards, dones)
+            states, next_states, actions, rewards, dones = self.rollout()
+
+            self.replay_buffer.add(
+                state=states,
+                next_state=next_states,
+                action=actions,
+                reward=rewards,
+                done=dones,
+            )
+            states, next_states, actions, rewards, dones = self.replay_buffer.sample(
+                self.replay_buffer_sample_batch_size
+            )
+            logs = self.agent.update_policy(
+                states, next_states, actions, rewards, dones
+            )
 
             elapsed_time = time.time() - start_time
             progress = (epoch + 1) / self.num_epochs

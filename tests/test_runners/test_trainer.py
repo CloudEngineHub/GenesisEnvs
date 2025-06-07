@@ -25,5 +25,5 @@ def test_trainer():
         num_epochs=3,
         exp_name="pytest_exp",
     )
-    states, actions, rewards, dones = trainer.rollout()
+    states, next_states, actions, rewards, dones = trainer.rollout()
     trainer.train_loop()

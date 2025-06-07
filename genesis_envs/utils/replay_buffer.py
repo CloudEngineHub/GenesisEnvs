@@ -27,20 +27,18 @@ class ReplayBuffer:
         states, next_states, actions, rewards, dones = zip(
             *[self.buffer[i] for i in indices]
         )
-        return (
-            torch.stack(states),
-            torch.stack(next_states),
-            torch.stack(actions),
-            torch.stack(rewards),
-            torch.stack(dones),
-        )
+        states = torch.cat(states, dim=1)
+        next_states = torch.cat(next_states, dim=1)
+        actions = torch.cat(actions, dim=1)
+        rewards = torch.cat(rewards, dim=1)
+        dones = torch.cat(dones, dim=1)
+        return states, next_states, actions, rewards, dones
 
     def get_all(self):
         states, next_states, actions, rewards, dones = zip(*self.buffer)
-        return {
-            "states": torch.stack(states),
-            "next_states": torch.stack(next_states),
-            "actions": torch.stack(actions),
-            "rewards": torch.stack(rewards),
-            "dones": torch.stack(dones),
-        }
+        states = torch.cat(states, dim=1)
+        next_states = torch.cat(next_states, dim=1)
+        actions = torch.cat(actions, dim=1)
+        rewards = torch.cat(rewards, dim=1)
+        dones = torch.cat(dones, dim=1)
+        return states, next_states, actions, rewards, dones

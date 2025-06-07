@@ -45,6 +45,7 @@ class PPOAgent(AgentInterface):
     def update_policy(
         self,
         states: States,
+        next_states: States,
         actions: Actions,
         rewards: Rewards,
         dones: Dones,

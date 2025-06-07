@@ -18,6 +18,7 @@ def test_ppo_agent():
 
     loss = agent.update_policy(
         states=torch.rand(50, 10, 16),  # [num_steps, num_envs, num_states]
+        next_states=torch.rand(50, 10, 16),
         actions=torch.randint(low=0, high=10, size=(50, 10)),
         rewards=torch.rand(50, 10),
         dones=torch.randint(low=0, high=2, size=(50, 10), dtype=torch.bool),

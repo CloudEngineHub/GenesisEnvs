@@ -9,72 +9,111 @@ def replay_buffer():
     return ReplayBuffer(buffer_size=5)
 
 
+def make_batch(horizon, num_envs, num_actions):
+    state = torch.randn(horizon, num_envs, num_actions)
+    next_state = torch.randn(horizon, num_envs, num_actions)
+    action = torch.randint(0, 2, (horizon, num_envs, num_actions))
+    reward = torch.randn(horizon, num_envs, num_actions)
+    done = torch.randint(0, 2, (horizon, num_envs, num_actions)).bool()
+    return state, next_state, action, reward, done
+
+
 def test_add_to_replay_buffer(replay_buffer):
-    state = torch.tensor([1.0, 2.0, 3.0])
-    next_state = torch.tensor([1.0, 2.0, 3.0])
-    action = torch.tensor([0])
-    reward = torch.tensor([1.0])
-    done = torch.tensor([False])
+    horizon, num_envs, num_actions = 2, 3, 4
+    buffer_size = 5
+    batch_size = 10
+    for i in range(batch_size):
+        state, next_state, action, reward, done = make_batch(
+            horizon, num_envs, num_actions
+        )
+        replay_buffer.add(state, next_state, action, reward, done)
 
-    replay_buffer.add(state, next_state, action, reward, done)
+    assert len(replay_buffer.buffer) == buffer_size
 
-    assert len(replay_buffer.buffer) == 1, "Buffer size should be 1"
-
-    states, next_states, actions, rewards, dones = replay_buffer.get_all().values()
-    assert torch.equal(states[0], state), "State does not match"
-    assert torch.equal(next_states[0], next_state), "Next State does not match"
-    assert torch.equal(actions[0], action), "Action does not match"
-    assert torch.equal(rewards[0], reward), "Reward does not match"
-    assert torch.equal(dones[0], done), "Done does not match"
+    data = replay_buffer.get_all()
+    states, next_states, actions, rewards, dones = data
+    assert states.shape == (horizon, buffer_size * num_envs, num_actions), (
+        "State shape mismatch"
+    )
+    assert next_states.shape == (horizon, buffer_size * num_envs, num_actions), (
+        "Next state shape mismatch"
+    )
+    assert actions.shape == (horizon, buffer_size * num_envs, num_actions), (
+        "Action shape mismatch"
+    )
+    assert rewards.shape == (horizon, buffer_size * num_envs, num_actions), (
+        "Reward shape mismatch"
+    )
+    assert dones.shape == (horizon, buffer_size * num_envs, num_actions), (
+        "Done shape mismatch"
+    )
 
 
 def test_sample_from_replay_buffer(replay_buffer):
-    for i in range(5):
-        state = torch.tensor([i, i + 1, i + 2])
-        next_state = torch.tensor([i, i + 1, i + 2])
-        action = torch.tensor([i % 2])
-        reward = torch.tensor([i * 0.1])
-        done = torch.tensor([i % 2 == 0])
+    horizon, num_envs, num_actions = 5, 2, 3
+    for i in range(horizon):
+        state, next_state, action, reward, done = make_batch(
+            horizon, num_envs, num_actions
+        )
         replay_buffer.add(state, next_state, action, reward, done)
 
     batch_size = 3
-    states, next_state, actions, rewards, dones = replay_buffer.sample(batch_size)
+    batch = replay_buffer.sample(batch_size)
+    states, next_states, actions, rewards, dones = batch
 
-    assert states.shape == (batch_size, 3), f"States shape should be ({batch_size}, 3)"
-    assert actions.shape == (batch_size, 1), (
-        f"Actions shape should be ({batch_size}, 1)"
+    assert states.shape == (horizon, batch_size * num_envs, num_actions), (
+        "States shape mismatch"
     )
-    assert rewards.shape == (batch_size, 1), (
-        f"Rewards shape should be ({batch_size}, 1)"
+    assert next_states.shape == (horizon, batch_size * num_envs, num_actions), (
+        "Next states shape mismatch"
     )
-    assert dones.shape == (batch_size, 1), f"Dones shape should be ({batch_size}, 1)"
+    assert actions.shape == (horizon, batch_size * num_envs, num_actions), (
+        "Actions shape mismatch"
+    )
+    assert rewards.shape == (horizon, batch_size * num_envs, num_actions), (
+        "Rewards shape mismatch"
+    )
+    assert dones.shape == (horizon, batch_size * num_envs, num_actions), (
+        "Dones shape mismatch"
+    )
 
 
 def test_buffer_overflow(replay_buffer):
-    for i in range(6):
-        state = torch.tensor([i, i + 1, i + 2])
-        next_state = torch.tensor([i, i + 1, i + 2])
-        action = torch.tensor([i % 2])
-        reward = torch.tensor([i * 0.1])
-        done = torch.tensor([i % 2 == 0])
+    horizon, num_envs, num_actions = 5, 2, 2
+    batch_size = 6
+    for i in range(batch_size):
+        state, next_state, action, reward, done = make_batch(
+            horizon, num_envs, num_actions
+        )
         replay_buffer.add(state, next_state, action, reward, done)
 
-    assert len(replay_buffer.buffer) == 5, "Buffer size should be 5"
+    assert len(replay_buffer.buffer) == replay_buffer.buffer_size, (
+        "Buffer size should be capped"
+    )
 
 
 def test_get_all_data(replay_buffer):
-    for i in range(5):
-        state = torch.tensor([i, i + 1, i + 2])
-        next_state = torch.tensor([i, i + 1, i + 2])
-        action = torch.tensor([i % 2])
-        reward = torch.tensor([i * 0.1])
-        done = torch.tensor([i % 2 == 0])
+    horizon, num_envs, num_actions = 5, 2, 2
+    batch_size = 5
+    for i in range(batch_size):
+        state, next_state, action, reward, done = make_batch(
+            horizon, num_envs, num_actions
+        )
         replay_buffer.add(state, next_state, action, reward, done)
 
-    data = replay_buffer.get_all()
-
-    assert data["states"].shape == (5, 3), "States shape should be (5, 3)"
-    assert data["next_states"].shape == (5, 3), "States shape should be (5, 3)"
-    assert data["actions"].shape == (5, 1), "Actions shape should be (5, 1)"
-    assert data["rewards"].shape == (5, 1), "Rewards shape should be (5, 1)"
-    assert data["dones"].shape == (5, 1), "Dones shape should be (5, 1)"
+    states, next_states, actions, rewards, dones = replay_buffer.get_all()
+    assert states.shape == (horizon, batch_size * num_envs, num_actions), (
+        "States shape mismatch"
+    )
+    assert next_states.shape == (horizon, batch_size * num_envs, num_actions), (
+        "Next states shape mismatch"
+    )
+    assert actions.shape == (horizon, batch_size * num_envs, num_actions), (
+        "Actions shape mismatch"
+    )
+    assert rewards.shape == (horizon, batch_size * num_envs, num_actions), (
+        "Rewards shape mismatch"
+    )
+    assert dones.shape == (horizon, batch_size * num_envs, num_actions), (
+        "Dones shape mismatch"
+    )
