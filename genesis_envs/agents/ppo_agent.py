@@ -16,6 +16,7 @@ class PPOAgent(AgentInterface):
         clip_epsilon: float,
         value_coef: float = 0.5,
         entropy_coef: float = 0.01,
+        max_grad_norm: float = 0.5,
         num_update_steps: int = 10,
         normalize_discounted_reward: bool = True,
         device: torch.device = torch.device("cpu"),
@@ -26,6 +27,7 @@ class PPOAgent(AgentInterface):
         self.value_coef = value_coef
         self.clip_epsilon = clip_epsilon
         self.entropy_coef = entropy_coef
+        self.max_grad_norm = max_grad_norm
         self.num_update_steps = num_update_steps
         self.normalize_discounted_reward = normalize_discounted_reward
         self.device = device
@@ -105,6 +107,9 @@ class PPOAgent(AgentInterface):
 
             self.optimizer.zero_grad()
             total_loss.backward()
+            torch.nn.utils.clip_grad_norm_(
+                self.actor_critic_model.parameters(), self.max_grad_norm
+            )
             self.optimizer.step()
 
         logs["policy_loss"] = torch.tensor(logs["policy_loss"]).mean().item()
