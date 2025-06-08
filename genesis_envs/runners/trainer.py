@@ -57,7 +57,7 @@ class GenesisEnvTrainer:
         if not os.path.exists(self.checkpoint_save_path):
             os.makedirs(self.checkpoint_save_path, exist_ok=True)
 
-    def rollout(self) -> Tuple[States, Actions, Rewards, Dones]:
+    def rollout(self) -> Tuple[States, States, Actions, Rewards, Dones]:
         state = self.env.reset()
         total_reward = torch.zeros(self.env.num_envs, device=self.device)
         done_array = torch.tensor([False] * self.env.num_envs, device=self.device)

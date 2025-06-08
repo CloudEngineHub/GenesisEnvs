@@ -1,0 +1,39 @@
+environment:
+    type: genesis_envs.envs.GraspEnv
+    vis: False
+    num_envs: 50
+
+network:
+    q_network:
+        type: genesis_envs.models.MLP
+        input_dim: 6
+        hidden_dim: 64
+        output_dim: 8
+        num_layers: 3
+
+optimizer:
+    type: torch.optim.Adam
+    lr: 1e-3
+
+agent:
+    type: genesis_envs.agents.DQNAgent
+    discount_factor: 0.99
+    epsilon: 0.5
+    target_update_interval: 10
+
+training:
+    exp_name: "GraspFrankaDQN"
+    output_dir: "outputs"
+    horizon: 50
+    num_epochs: 500
+    replay_buffer_size: 100000
+    replay_buffer_sample_batch_size: 64
+    log_every_epochs: 1
+    save_checkpoint_every_epochs: 10
+    device: cpu
+
+genesis:
+    backend: cpu                    # Device for simulator
+    precision: "32"                  # Precision
+    logging_level: ERROR
+    theme: dark

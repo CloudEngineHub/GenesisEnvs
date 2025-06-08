@@ -1,115 +1,103 @@
 import torch
-from torch.distributions import Categorical
 from torch.nn import functional as F
 
 from ..agents.base import AgentInterface
-from ..utils.reward_utils import compute_discounted_rewards
 from ..utils.typing_utils import Actions, Dones, Rewards, States
 
 
-class PPOAgent(AgentInterface):
+class DQNAgent(AgentInterface):
     def __init__(
         self,
-        network: dict[str, torch.nn.Module],
+        networks: dict[str, torch.nn.Module],
         optimizer: torch.optim.Optimizer,
-        epsilon: float = 0.5,
+        discount_factor: float = 0.99,
+        epsilon: float = 0.1,
+        epsilon_min: float = 0.01,
+        epsilon_decay: float = 0.995,
+        tau: float = 1.0,
+        target_update_interval: int = 100,
         device: torch.device = torch.device("cpu"),
     ):
-        self.network = network
-        self.epsilon = epsilon
+        self.networks = networks
+        self.q_network = networks["q_network"]
+        self.target_q_network = networks.get("target_q_network", None)
+        if self.target_q_network is None:
+            import copy
 
-        self.device = device
+            self.target_q_network = copy.deepcopy(self.q_network)
 
         self.optimizer = optimizer
+        self.discount_factor = discount_factor
+        self.epsilon = epsilon
+        self.epsilon_min = epsilon_min
+        self.epsilon_decay = epsilon_decay
+        self.tau = tau
+        self.target_update_interval = target_update_interval
+        self.device = device
+        self.update_count = 0
 
     def select_action(self, state: States, deterministic: bool = False) -> Actions:
         with torch.no_grad():
-            q_values = self.network(state)
+            q_values = self.q_network(state)
 
         if deterministic:
             action = torch.argmax(q_values, dim=-1)
         else:
-            num_envs = q_values.size(0)
-            random_action = torch.randint(0, q_values.size(1), (num_envs,)).to(
-                self.device
+            batch_size = q_values.size(0)
+            random_actions = torch.randint(
+                0, q_values.size(-1), (batch_size,), device=self.device
             )
-            greedy_action = torch.argmax(q_values, dim=1)
-            action = torch.where(
-                torch.rand(num_envs < self.epsilon), random_action, greedy_action
-            )
+            greedy_actions = torch.argmax(q_values, dim=-1)
+            mask = torch.rand(batch_size, device=self.device) < self.epsilon
+            action = torch.where(mask, random_actions, greedy_actions)
         return action
+
+    def decay_epsilon(self):
+        self.epsilon = max(self.epsilon_min, self.epsilon * self.epsilon_decay)
 
     def update_policy(
         self,
         states: States,
+        next_states: States,
         actions: Actions,
         rewards: Rewards,
         dones: Dones,
-    ) -> torch.Tensor:
-        logs = {
-            "policy_loss": [],
-            "value_loss": [],
-            "entropy": [],
-            "total_loss": [],
-        }
-
-        discounted_rewards = compute_discounted_rewards(
-            rewards,
-            dones,
-            self.discount_factor,
-            normalized=self.normalize_discounted_reward,
-            device=self.device,
-        )
+    ) -> dict:
+        q_values = self.q_network(states)
+        actions = actions.long()
+        if actions.dim() > 1:
+            actions = actions.squeeze(-1)
+        q_value = q_values.gather(1, actions.unsqueeze(dim=-1)).squeeze(dim=-1)
 
         with torch.no_grad():
-            output = self.network(states)
-            logits_old, value_old = output[..., :-1].detach(), output[..., -1].detach()
-            dist_old = Categorical(logits=logits_old)
-            log_probs_old = dist_old.log_prob(actions)
-
-        advantages = discounted_rewards - value_old
-        normalized_advantages = (advantages - advantages.mean(dim=0, keepdim=True)) / (
-            advantages.std(dim=0, keepdim=True) + 1e-8
-        )
-
-        # TODO: support minibatch update
-        # TODO: support gradient clipping
-        for t in range(self.num_update_steps):
-            output = self.network(states)
-            logits_new, values = output[..., :-1], output[..., -1]
-            dist_new = Categorical(logits=logits_new)
-
-            ratio = torch.exp(dist_new.log_prob(actions) - log_probs_old)
-
-            surrogate_loss1 = ratio * normalized_advantages
-            surrogate_loss2 = (
-                torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon)
-                * normalized_advantages
-            )
-            value_loss = F.mse_loss(values, discounted_rewards)
-            entropy = dist_new.entropy().mean()
-
-            policy_loss = -torch.min(surrogate_loss1, surrogate_loss2).mean()
-            total_loss = (
-                policy_loss + self.value_coef * value_loss - self.entropy_coef * entropy
+            next_q_values = self.target_q_network(next_states)
+            max_next_q_value = next_q_values.max(dim=-1)[0]
+            target_q_value = rewards.squeeze(dim=-1) + (
+                self.discount_factor * max_next_q_value * (~dones)
             )
 
-            logs["policy_loss"].append(policy_loss.item())
-            logs["value_loss"].append(value_loss.item())
-            logs["entropy"].append(entropy.item())
-            logs["total_loss"].append(total_loss.item())
+        loss = F.mse_loss(q_value, target_q_value)
 
-            self.optimizer.zero_grad()
-            total_loss.backward()
-            self.optimizer.step()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
-        logs["policy_loss"] = torch.tensor(logs["policy_loss"]).mean().item()
-        logs["value_loss"] = torch.tensor(logs["value_loss"]).mean().item()
-        logs["total_loss"] = torch.tensor(logs["total_loss"]).mean().item()
+        self.update_count += 1
+        if self.update_count % self.target_update_interval == 0:
+            for target_network_param, q_network_param in zip(
+                self.target_q_network.parameters(), self.q_network.parameters()
+            ):
+                target_network_param.data.copy_(
+                    self.tau * q_network_param.data
+                    + (1.0 - self.tau) * target_network_param.data
+                )
 
-        logs["entropy"] = torch.tensor(logs["entropy"]).mean().item()
-        logs["discounted_rewards"] = discounted_rewards.detach().mean().item()
-        logs["adv_mean"] = advantages.mean().item()
-        logs["adv_std"] = advantages.std().item()
+        self.decay_epsilon()
 
+        logs = {
+            "q_loss": loss.item(),
+            "q_value_mean": q_value.mean().item(),
+            "target_q_value_mean": target_q_value.mean().item(),
+            "epsilon": self.epsilon,
+        }
         return logs
