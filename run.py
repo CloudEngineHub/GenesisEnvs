@@ -31,6 +31,9 @@ def launch(
     if eval:
         conf["environment"]["num_envs"] = 1
         conf["environment"]["vis"] = True
+        conf["training"]["deterministic_action"] = True
+    else:
+        conf["training"]["deterministic_action"] = False
 
     if exp_name is not None:
         conf["training"]["exp_name"] = exp_name

@@ -1,12 +1,12 @@
 environment:
     type: genesis_envs.envs.GraspEnv
-    vis: False
+    vis: false
     num_envs: 50
 
 network:
     q_network:
         type: genesis_envs.models.MLP
-        input_dim: 6
+        input_dim: 9
         hidden_dim: 64
         output_dim: 8
         num_layers: 3
@@ -18,8 +18,8 @@ optimizer:
 agent:
     type: genesis_envs.agents.DQNAgent
     discount_factor: 0.99
-    epsilon: 0.5
-    target_update_interval: 10
+    epsilon: 0.9
+    target_update_interval: 200
 
 training:
     exp_name: "GraspFrankaDQN"

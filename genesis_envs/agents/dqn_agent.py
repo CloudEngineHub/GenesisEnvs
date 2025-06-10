@@ -12,7 +12,7 @@ class DQNAgent(AgentInterface):
         optimizer: torch.optim.Optimizer,
         discount_factor: float = 0.99,
         epsilon: float = 0.1,
-        epsilon_min: float = 0.01,
+        epsilon_min: float = 0.1,
         epsilon_decay: float = 0.995,
         tau: float = 1.0,
         target_update_interval: int = 100,
@@ -63,41 +63,50 @@ class DQNAgent(AgentInterface):
         rewards: Rewards,
         dones: Dones,
     ) -> dict:
-        q_values = self.q_network(states)
-        actions = actions.long()
-        if actions.dim() > 1:
-            actions = actions.squeeze(-1)
-        q_value = q_values.gather(1, actions.unsqueeze(dim=-1)).squeeze(dim=-1)
+        q_loss = 0.0
+        q_value_mean = 0.0
+        target_q_value_mean = 0.0
+        for i in range(states.size(0)):
+            q_values = self.q_network(states[i])
+            q_value = q_values.gather(1, actions[i].unsqueeze(dim=-1)).squeeze(dim=-1)
 
-        with torch.no_grad():
-            next_q_values = self.target_q_network(next_states)
-            max_next_q_value = next_q_values.max(dim=-1)[0]
-            target_q_value = rewards.squeeze(dim=-1) + (
-                self.discount_factor * max_next_q_value * (~dones)
-            )
-
-        loss = F.mse_loss(q_value, target_q_value)
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        self.update_count += 1
-        if self.update_count % self.target_update_interval == 0:
-            for target_network_param, q_network_param in zip(
-                self.target_q_network.parameters(), self.q_network.parameters()
-            ):
-                target_network_param.data.copy_(
-                    self.tau * q_network_param.data
-                    + (1.0 - self.tau) * target_network_param.data
+            with torch.no_grad():
+                next_q_values = self.target_q_network(next_states[i])
+                max_next_q_value = next_q_values.max(dim=-1)[0]
+                target_q_value = rewards.squeeze(dim=-1) + (
+                    self.discount_factor * max_next_q_value * (~dones[i])
                 )
+
+            loss = F.mse_loss(q_value, target_q_value)
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            self.update_count += 1
+            if self.update_count % self.target_update_interval == 0:
+                for target_network_param, q_network_param in zip(
+                    self.target_q_network.parameters(), self.q_network.parameters()
+                ):
+                    target_network_param.data.copy_(
+                        self.tau * q_network_param.data
+                        + (1.0 - self.tau) * target_network_param.data
+                    )
+
+            q_loss += loss.item()
+            q_value_mean += q_value.mean().item()
+            target_q_value_mean += target_q_value.mean().item()
 
         self.decay_epsilon()
 
+        q_loss /= states.size(0)
+        q_value_mean /= states.size(0)
+        target_q_value_mean /= states.size(0)
+
         logs = {
-            "q_loss": loss.item(),
-            "q_value_mean": q_value.mean().item(),
-            "target_q_value_mean": target_q_value.mean().item(),
+            "q_loss": q_loss,
+            "q_value_mean": q_value_mean,
+            "target_q_value_mean": target_q_value_mean,
             "epsilon": self.epsilon,
         }
         return logs

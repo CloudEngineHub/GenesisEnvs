@@ -87,10 +87,13 @@ class GraspEnv(EnvInterface):
         self.cube.set_pos(cube_pos, envs_idx=self.envs_idx)
 
         obs1 = self.cube.get_pos()
-        obs2 = (
-            self.franka.get_link("left_finger").get_pos()
-            + self.franka.get_link("right_finger").get_pos()
-        ) / 2
+        obs2 = torch.concat(
+            [
+                self.franka.get_link("left_finger").get_pos(),
+                self.franka.get_link("right_finger").get_pos(),
+            ],
+            dim=1,
+        )
         state = torch.concat([obs1, obs2], dim=1)
         return state
 
@@ -136,12 +139,18 @@ class GraspEnv(EnvInterface):
             self.franka.get_link("left_finger").get_pos()
             + self.franka.get_link("right_finger").get_pos()
         ) / 2
-        states = torch.concat([block_position, gripper_position], dim=1)
-
+        states = torch.concat(
+            [
+                block_position,
+                self.franka.get_link("left_finger").get_pos(),
+                self.franka.get_link("right_finger").get_pos(),
+            ],
+            dim=1,
+        )
         rewards = (
-            -torch.norm(block_position - gripper_position, dim=1) * 0.1
-            + (block_position[:, 2] > 0.04).float() * 1.0
-            + (block_position[:, 2] > 0.35).float() * 5.0
+            -torch.norm(block_position - gripper_position, dim=1)
+            + torch.maximum(torch.tensor(0.02), block_position[:, 2]) * 10
         )
         dones = block_position[:, 2] > 0.35
+
         return states, rewards, dones
