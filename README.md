@@ -24,7 +24,7 @@ $ pip install -e .
 ```
 
 ## Usage
-To training a policy, you can run with:
+To train a policy, you can run with:
 ```bash
 uv run run.py --config-path PATH_TO_YOUR_CONFIG --exp-name YOUR_EXP_NAME
 
